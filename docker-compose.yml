@@ -1,0 +1,34 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  api_gateway:
+    build:
+      # Указывает на папку, где лежит Dockerfile для шлюза
+      context: ./api_gateway/ApiGateway 
+    ports:
+      - "80:80"
+    environment:
+      SERVICE_NAME: "API Gateway"
+    networks:
+      - task-network
+
+  service_users:
+    build:
+      context: ./service_users/ServiceUsers
+    environment:
+      SERVICE_NAME: "Service Users"
+    networks:
+      - task-network
+      
+  service_orders:
+    build:
+      context: ./service_orders/ServiceOrders
+    environment:
+      SERVICE_NAME: "Service Orders"
+    networks:
+      - task-network
+
+networks:
+  task-network:
+    driver: bridge
