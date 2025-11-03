@@ -7,7 +7,7 @@ services:
       # Указывает на папку, где лежит Dockerfile для шлюза
       context: ./api_gateway/ApiGateway 
     ports:
-      - "80:80"
+      - "80:8080"
     environment:
       SERVICE_NAME: "API Gateway"
     networks:
