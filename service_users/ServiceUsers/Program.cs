@@ -1,42 +1,90 @@
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using ServiceUsers.Data;
 using ServiceUsers.Models;
+using ServiceUsers.Services;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
+// =====================
+// DATABASE CONFIG
+// =====================
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    // Получаем строку подключения из appsettings.json, если её нет, используем users.db
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") 
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")
         ?? "Data Source=users.db"));
 
+// =====================
+// IDENTITY CONFIG
+// =====================
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
+// =====================
+// JWT CONFIG
+// =====================
+var jwtKey = builder.Configuration["Jwt:Key"];
+if (string.IsNullOrEmpty(jwtKey))
+    throw new InvalidOperationException("JWT Key is missing in configuration.");
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false; // можно true, если HTTPS
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+    };
+});
+
+// =====================
+// DEPENDENCY INJECTION
+// =====================
+builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddControllers();
 
+// =====================
+// BUILD APP
+// =====================
 var app = builder.Build();
 
-// Применение миграций при запуске
+// =====================
+// APPLY MIGRATIONS
+// =====================
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    context.Database.Migrate(); 
+    context.Database.Migrate();
 }
 
-// Configure the HTTP request pipeline.
+// =====================
+// MIDDLEWARE PIPELINE
+// =====================
 if (app.Environment.IsDevelopment())
 {
-   // Здесь останется пусто
+    app.UseDeveloperExceptionPage();
 }
 
 app.UseHttpsRedirection();
 
-// app.MapGet("/status", ...) - если вы его добавляли, он должен быть тут.
+// ВАЖНО: порядок имеет значение
+app.UseAuthentication();
+app.UseAuthorization();
 
-app.MapControllers(); // Добавляет поддержку маршрутов из контроллеров
+app.MapControllers();
 
 app.Run();

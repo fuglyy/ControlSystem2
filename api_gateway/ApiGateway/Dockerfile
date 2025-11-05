@@ -15,6 +15,8 @@ RUN dotnet publish -c Release -o /app/publish
 # Этап 2: Запуск (Runtime)
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y curl
 # Копируем опубликованные файлы с этапа Build
 COPY --from=build /app/publish .
 
