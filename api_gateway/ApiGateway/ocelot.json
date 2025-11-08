@@ -18,7 +18,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "service_users",
-          "Port": 8080
+          "Port": 5076
         }
       ],
       "UpstreamPathTemplate": "/api/v1/account/{everything}",

@@ -1,13 +1,11 @@
-# docker-compose.yml
 version: '3.8'
 
 services:
   api_gateway:
     build:
-      # Указывает на папку, где лежит Dockerfile для шлюза
-      context: ./api_gateway/ApiGateway 
+      context: ./api_gateway/ApiGateway
     ports:
-      - "80:8080"
+      - "8080:8080"
     environment:
       SERVICE_NAME: "API Gateway"
     networks:
@@ -16,6 +14,8 @@ services:
   service_users:
     build:
       context: ./service_users/ServiceUsers
+    ports:
+      - "5076:5076"   # <— Swagger и API Users будут на этом порту
     environment:
       SERVICE_NAME: "Service Users"
     networks:
@@ -24,6 +24,8 @@ services:
   service_orders:
     build:
       context: ./service_orders/ServiceOrders
+    ports:
+      - "5074:5074"   # <— Swagger и API Orders будут на этом порту
     environment:
       SERVICE_NAME: "Service Orders"
     networks:

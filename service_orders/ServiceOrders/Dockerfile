@@ -13,7 +13,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
-EXPOSE 80
+EXPOSE 5074
 
 # !!! Имя dll для Сервиса Заказов !!!
 ENTRYPOINT ["dotnet", "ServiceOrders.dll"]

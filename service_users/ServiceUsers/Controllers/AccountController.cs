@@ -4,12 +4,26 @@ using Microsoft.AspNetCore.Identity;
 using ServiceUsers.Models;
 using ServiceUsers.DTOs;
 using ServiceUsers.Services;
+using System;
+using System.Text;
+using System.Security.Claims;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+
 
 namespace ServiceUsers.Controllers
 {
     [ApiController]
     [Route("api/v1/account")]
     public class AccountController : ControllerBase{
+        private readonly IConfiguration _configuration;
+
+        public AccountController(IConfiguration configuration)
+        {
+            _configuration = configuration;
+        }
+
         private readonly UserManager<ApplicationUser> _userManager;
 
         public AccountController(UserManager<ApplicationUser> userManager){
