@@ -20,6 +20,8 @@ services:
       SERVICE_NAME: "Service Users"
     networks:
       - task-network
+    volumes:
+    - ./data/users.db:/app/users.db
       
   service_orders:
     build:

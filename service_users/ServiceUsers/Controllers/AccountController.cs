@@ -18,16 +18,14 @@ namespace ServiceUsers.Controllers
     [Route("api/v1/account")]
     public class AccountController : ControllerBase{
         private readonly IConfiguration _configuration;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly JwtTokenService _jwtService;
 
-        public AccountController(IConfiguration configuration)
+        public AccountController(IConfiguration configuration, UserManager<ApplicationUser> userManager, JwtTokenService jwtService)
         {
             _configuration = configuration;
-        }
-
-        private readonly UserManager<ApplicationUser> _userManager;
-
-        public AccountController(UserManager<ApplicationUser> userManager){
             _userManager = userManager;
+            _jwtService = jwtService;
         }
 
         [HttpPost("register")]
@@ -38,6 +36,7 @@ namespace ServiceUsers.Controllers
 
             var user = new ApplicationUser{
                 UserName = model.Email, 
+                Email = model.Email, 
                 Name = model.Name,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -62,32 +61,41 @@ namespace ServiceUsers.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginRequest model, [FromServices] JwtTokenService jwtService)
+        public async Task<IActionResult> Login([FromBody] LoginRequest model)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(new { success = false, error = new { code = "INVALID_INPUT", message = "Некорректные данные входа" } });
-
-            var user = await _userManager.FindByEmailAsync(model.Email);
-            if (user == null)
-                return Unauthorized(new { success = false, error = new { code = "USER_NOT_FOUND", message = "Пользователь не найден" } });
-
-            var validPassword = await _userManager.CheckPasswordAsync(user, model.Password);
-            if (!validPassword)
-                return Unauthorized(new { success = false, error = new { code = "INVALID_PASSWORD", message = "Неверный пароль" } });
-
-            var roles = await _userManager.GetRolesAsync(user);
-            var token = jwtService.GenerateToken(user, roles);
-
-            return Ok(new
+            try
             {
-                success = true,
-                data = new
+                if (!ModelState.IsValid)
+                    return BadRequest(new { success = false, error = new { code = "INVALID_INPUT", message = "Некорректные данные входа" } });
+
+                var user = await _userManager.FindByEmailAsync(model.Email);
+                if (user == null)
+                    return Unauthorized(new { success = false, error = new { code = "USER_NOT_FOUND", message = "Пользователь не найден" } });
+
+                var validPassword = await _userManager.CheckPasswordAsync(user, model.Password);
+                if (!validPassword)
+                    return Unauthorized(new { success = false, error = new { code = "INVALID_PASSWORD", message = "Неверный пароль" } });
+
+                var roles = (await _userManager.GetRolesAsync(user)) ?? new List<string>();
+                var token = _jwtService.GenerateToken(user, roles);
+
+                return Ok(new
                 {
-                    token,
-                    user = new { user.Id, user.Email, user.Name, roles }
-                }
-            });
+                    success = true,
+                    data = new
+                    {
+                        token,
+                        user = new { user.Id, user.Email, user.Name, roles }
+                    }
+                });
+            }
+            catch(Exception ex)
+            {
+                // просто для диагностики
+                return StatusCode(500, new { success = false, error = ex.Message });
+            }
         }
+
         [HttpPut("profile")]
         public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest model)
         {

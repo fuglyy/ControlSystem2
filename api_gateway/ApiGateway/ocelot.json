@@ -6,7 +6,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "api_gateway",
-          "Port": 80
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/status",
@@ -24,9 +24,22 @@
       "UpstreamPathTemplate": "/api/v1/account/{everything}",
       "UpstreamHttpMethod": [ "Post", "Get", "Put", "Delete" ],
       "Priority": 1
+    },
+    {
+      "DownstreamPathTemplate": "/api/v1/orders/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "service_orders",
+          "Port": 5074
+        }
+      ],
+      "UpstreamPathTemplate": "/api/v1/orders/{everything}",
+      "UpstreamHttpMethod": [ "Post", "Get", "Put", "Delete" ],
+      "Priority": 1
     }
   ],
   "GlobalConfiguration": {
-    "BaseUrl": "http://localhost"
+    "BaseUrl": "http://api_gateway:8080"
   }
 }
