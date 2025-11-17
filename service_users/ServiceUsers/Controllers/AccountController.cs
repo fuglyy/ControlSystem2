@@ -10,6 +10,9 @@ using System.Security.Claims;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.EntityFrameworkCore;   
+using ServiceUsers.Data;               
+
 
 
 namespace ServiceUsers.Controllers
@@ -17,12 +20,14 @@ namespace ServiceUsers.Controllers
     [ApiController]
     [Route("api/v1/account")]
     public class AccountController : ControllerBase{
+        private readonly ApplicationDbContext _dbContext;
         private readonly IConfiguration _configuration;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly JwtTokenService _jwtService;
 
-        public AccountController(IConfiguration configuration, UserManager<ApplicationUser> userManager, JwtTokenService jwtService)
+        public AccountController(ApplicationDbContext dbContext, IConfiguration configuration, UserManager<ApplicationUser> userManager, JwtTokenService jwtService)
         {
+            _dbContext = dbContext;
             _configuration = configuration;
             _userManager = userManager;
             _jwtService = jwtService;
@@ -111,7 +116,11 @@ namespace ServiceUsers.Controllers
             }
 
             if (!string.IsNullOrEmpty(model.Name)) user.Name = model.Name;
-            if (!string.IsNullOrEmpty(model.Password)) user.PasswordHash = HashPassword(dto.Password);
+            if (!string.IsNullOrEmpty(model.Password))
+            {
+                // Используем встроенный хешер из UserManager
+                user.PasswordHash = _userManager.PasswordHasher.HashPassword(user, model.Password);
+            }
 
             await _dbContext.SaveChangesAsync();
             return Ok(user);
@@ -126,7 +135,7 @@ namespace ServiceUsers.Controllers
 
             if (!string.IsNullOrEmpty(role))
             {
-                query = _dbContext.Users                        // если Roles хранится через IdentityUserRole
+                query = _dbContext.Users;                        // если Roles хранится через IdentityUserRole
             }
 
             var totalUsers = await query.CountAsync();
