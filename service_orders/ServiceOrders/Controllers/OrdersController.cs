@@ -4,18 +4,22 @@ using ServiceOrders.Data;
 using ServiceOrders.Models;
 using ServiceOrders.DTOs;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ServiceOrders.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/v1/orders")]
     public class OrdersController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IOrderEventsService _eventsService;
 
-        public OrdersController(ApplicationDbContext context)
+        public OrdersController(ApplicationDbContext context, IOrderEventsService eventsService)
         {
             _context = context;
+            _eventsService = eventsService;
         }
 
         // --- Создание заказа ---
@@ -45,6 +49,7 @@ namespace ServiceOrders.Controllers
 
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
+            _eventsService.OrderCreated(order);
 
             return Ok(order);
         }
@@ -98,6 +103,8 @@ namespace ServiceOrders.Controllers
             order.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+            _eventsService.OrderCreated(order);
+
             return Ok(order);
         }
 
@@ -116,6 +123,8 @@ namespace ServiceOrders.Controllers
             order.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+            _eventsService.OrderCreated(order);
+
             return Ok(order);
         }
     }

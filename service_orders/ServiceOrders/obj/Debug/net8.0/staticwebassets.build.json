@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "fjeVeK+RCdE9hvRxiskiJ7cB0cDHIsaeDUCZpWowDfo=",
+  "Source": "ServiceOrders",
+  "BasePath": "_content/ServiceOrders",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

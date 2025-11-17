@@ -1,5 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using ServiceOrders.Data;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,6 +11,9 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=orders.db"));
 
 builder.Services.AddControllers();
+
+builder.Services.AddScoped<IOrderEventsService, OrderEventsService>();
+
 
 builder.WebHost.ConfigureKestrel(options =>
 {
@@ -44,6 +51,44 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+var jwtKey = builder.Configuration["Jwt:Key"];
+if (string.IsNullOrEmpty(jwtKey))
+    throw new InvalidOperationException("JWT Key is missing in configuration.");
+
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false; // можно true, если HTTPS
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        RoleClaimType = ClaimTypes.Role,
+        NameClaimType = "name"
+    };
+    options.Events = new JwtBearerEvents
+{
+    OnAuthenticationFailed = ctx =>
+    {
+        Console.WriteLine("JWT ERROR: " + ctx.Exception.Message);
+        return Task.CompletedTask;
+    }
+};
+
+});
+
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -62,6 +107,12 @@ if (app.Environment.IsDevelopment() || true) // можно включить в �
     });
 }
 
+
+
+
+app.UseDeveloperExceptionPage();
+app.UseHttpsRedirection();
+app.UseRouting();
 
 app.UseHttpsRedirection();
 app.UseAuthentication(); // JWT middleware через Api Gateway

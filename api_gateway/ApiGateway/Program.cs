@@ -4,6 +4,23 @@ var builder = WebApplication.CreateBuilder(args);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 
 //builder.Services.AddOpenApi();
+builder.Services.AddMemoryCache();
+builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
+builder.Services.AddInMemoryRateLimiting();
+builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(builder =>
+    {
+        builder.AllowAnyOrigin()
+               .AllowAnyHeader()
+               .AllowAnyMethod();
+    });
+});
+
+
+
+
 
 var app = builder.Build();
 
@@ -12,27 +29,32 @@ if (app.Environment.IsDevelopment())
 {
  //   app.MapOpenApi();
 }
-
-app.UseHttpsRedirection();
-
-var summaries = new[]
+app.UseCors();
+if (!app.Environment.IsDevelopment())
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    app.UseHttpsRedirection();
+}
 
-app.MapGet("/weatherforecast", () =>
+app.UseIpRateLimiting();
+
+app.Use(async (context, next) =>
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+    if (!context.Request.Headers.ContainsKey("X-Request-ID"))
+    {
+        context.Request.Headers["X-Request-ID"] = Guid.NewGuid().ToString();
+    }
+
+    context.Response.OnStarting(() =>
+    {
+        context.Response.Headers["X-Request-ID"] = context.Request.Headers["X-Request-ID"];
+        return Task.CompletedTask;
+    });
+
+    await next();
+});
+
+
+
 
 app.Run();
 

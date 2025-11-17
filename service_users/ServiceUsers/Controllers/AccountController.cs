@@ -99,49 +99,51 @@ namespace ServiceUsers.Controllers
         [HttpPut("profile")]
         public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest model)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null) return Unauthorized();
+            var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+            var user = await _dbContext.Users.FindAsync(userId);
+            if (user == null) return NotFound();
 
-            var user = await _userManager.FindByIdAsync(userId);
-            user.Name = model.Name;
-            user.Email = model.Email;
-            user.UserName = model.Email;
-            user.UpdatedAt = DateTime.UtcNow;
+            if (!string.IsNullOrEmpty(model.Email))
+            {
+                if (await _dbContext.Users.AnyAsync(u => u.Email == model.Email && u.Id != userId))
+                    return BadRequest("Email already exists");
+                user.Email = model.Email;
+            }
 
-            var result = await _userManager.UpdateAsync(user);
-            if (!result.Succeeded)
-                return BadRequest(result.Errors);
+            if (!string.IsNullOrEmpty(model.Name)) user.Name = model.Name;
+            if (!string.IsNullOrEmpty(model.Password)) user.PasswordHash = HashPassword(dto.Password);
+
+            await _dbContext.SaveChangesAsync();
+            return Ok(user);
+        }
+
+        [HttpGet]
+        [Route("/api/v1/users")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> GetUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? role = null)
+        {
+            var query = _dbContext.Users.AsQueryable();
+
+            if (!string.IsNullOrEmpty(role))
+            {
+                query = _dbContext.Users                        // если Roles хранится через IdentityUserRole
+            }
+
+            var totalUsers = await query.CountAsync();
+            var users = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(u => new { u.Id, u.Email, u.Name })
+                .ToListAsync();
 
             return Ok(new
             {
-                Message = "Profile updated",
-                user.Id,
-                user.Email,
-                user.Name
+                page,
+                pageSize,
+                totalUsers,
+                users
             });
         }
 
-        private string GenerateJwtToken(ApplicationUser user)
-        {
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var claims = new[]
-            {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Email),
-                new Claim(ClaimTypes.NameIdentifier, user.Id),
-                new Claim(ClaimTypes.Name, user.Name)
-            };
-
-            var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
-                claims: claims,
-                expires: DateTime.UtcNow.AddHours(2),
-                signingCredentials: creds
-            );
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
     }
 }

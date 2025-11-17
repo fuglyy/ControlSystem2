@@ -18,6 +18,9 @@ services:
       - "5076:5076"   # <— Swagger и API Users будут на этом порту
     environment:
       SERVICE_NAME: "Service Users"
+      Jwt__Key: "ThisIsVeryLongAndSecureKeyForMyApplication32Bytes!"
+      Jwt__Issuer: "ServiceUsers"
+      Jwt__Audience: "SystemControlClients"
     networks:
       - task-network
     volumes:
@@ -30,8 +33,13 @@ services:
       - "5074:5074"   # <— Swagger и API Orders будут на этом порту
     environment:
       SERVICE_NAME: "Service Orders"
+      Jwt__Key: "ThisIsVeryLongAndSecureKeyForMyApplication32Bytes!"
+      Jwt__Issuer: "ServiceUsers"
+      Jwt__Audience: "SystemControlClients"
     networks:
       - task-network
+    volumes:
+    - ./data/orders.db:/app/orders.db
 
 networks:
   task-network:
